@@ -1,0 +1,60 @@
+name: Deploy lmcomeche
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # Repo "host" (lmcomeche)
+      - name: Checkout lmcomeche
+        uses: actions/checkout@v6
+        with:
+          path: host
+
+      # Repo "fuente" (lu2ogbemu) dentro del workflow
+      - name: Checkout lu2ogbemu
+        uses: actions/checkout@v6
+        with:
+          repository: Luwi2o/lu2ogbemu
+          path: lu2ogbemu
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Build site folder
+        run: |
+          mkdir -p _site
+          # Copia el contenido del host a la raíz del sitio (ajusta si usas otra carpeta)
+          cp -R host/* _site/ || true
+
+          # Publica lu2ogbemu como subcarpeta /lu2ogbemu
+          mkdir -p _site/lu2ogbemu
+          cp -R lu2ogbemu/* _site/lu2ogbemu/ || true
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
